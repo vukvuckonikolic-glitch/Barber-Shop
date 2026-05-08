@@ -7,9 +7,8 @@ import {
   addDoc,
   getDoc,
 } from "firebase/firestore";
-import { db } from "../firebase/firebase";
-
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { db, auth } from "../firebase/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 function AdminRezervacije() {
@@ -20,12 +19,11 @@ function AdminRezervacije() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
 
-  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
 
+  const navigate = useNavigate();
  
   useEffect(() => {
-    const auth = getAuth();
-
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         navigate("/");
@@ -33,20 +31,21 @@ function AdminRezervacije() {
       }
 
       try {
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
+        const snap = await getDoc(doc(db, "users", user.uid));
 
         if (!snap.exists()) {
           navigate("/");
           return;
         }
 
-        const role = (snap.data().role || "").trim();
+        const role = snap.data()?.role;
 
         if (role !== "admin") {
           navigate("/");
+          return;
         }
 
+        setChecking(false);
       } catch (err) {
         console.log(err);
         navigate("/");
@@ -55,7 +54,8 @@ function AdminRezervacije() {
 
     return () => unsub();
   }, [navigate]);
- 
+
+   
   const fetchRezervacije = async () => {
     const snap = await getDocs(collection(db, "reservations"));
 
@@ -77,23 +77,26 @@ function AdminRezervacije() {
 
     setSlots(data);
   };
+
  
   useEffect(() => {
+    if (checking) return;
+
     const load = async () => {
       setLoading(true);
+
       await fetchRezervacije();
       await fetchSlots();
+
       setLoading(false);
     };
 
     load();
-  }, []);
- 
+  }, [checking]);
+
+  
   const addSlot = async () => {
-    if (!newDate || !newTime) {
-      alert("Izaberi datum i vreme");
-      return;
-    }
+    if (!newDate || !newTime) return alert("Izaberi datum i vreme");
 
     await addDoc(collection(db, "availableSlots"), {
       date: newDate,
@@ -103,55 +106,54 @@ function AdminRezervacije() {
     setNewDate("");
     setNewTime("");
 
-    await fetchSlots();
+    fetchSlots();
   };
+
  
   const obrisiSlot = async (id) => {
-    if (!window.confirm("Obrisati termin?")) return;
-
     await deleteDoc(doc(db, "availableSlots", id));
-    await fetchSlots();
+    fetchSlots();
+  };
+
+  
+  const obrisiRezervaciju = async (id) => {
+    await deleteDoc(doc(db, "reservations", id));
+    fetchRezervacije();
   };
  
-  const obrisiRezervaciju = async (id) => {
-    if (!window.confirm("Obrisati rezervaciju?")) return;
-
-    await deleteDoc(doc(db, "reservations", id));
-    await fetchRezervacije();
-  };
+  if (checking) return <h1>Provera pristupa...</h1>;
 
   return (
     <div className="admin-container">
       <h1>ADMIN PANEL</h1>
- 
-    <div className="adminglavni">
-  <h3 className="admin-title">Dodaj termin</h3>
 
-  <div className="admin-form">
-    <input
-      type="date"
-      value={newDate}
-      onChange={(e) => setNewDate(e.target.value)}
-      className="admin-input"
-    />
+      <div className="adminglavni">
+        <h3 className="admin-title">Dodaj termin</h3>
 
-    <input
-      type="time"
-      value={newTime}
-      onChange={(e) => setNewTime(e.target.value)}
-      className="admin-input"
-    />
+        <div className="admin-form">
+          <input
+            type="date"
+            value={newDate}
+            onChange={(e) => setNewDate(e.target.value)}
+            className="admin-input"
+          />
 
-    <button onClick={addSlot} className="admin-btn">
-      Dodaj termin
-    </button>
-  </div>
-</div>
+          <input
+            type="time"
+            value={newTime}
+            onChange={(e) => setNewTime(e.target.value)}
+            className="admin-input"
+          />
 
-     
+          <button onClick={addSlot} className="admin-btn">
+            Dodaj termin
+          </button>
+        </div>
+      </div>
+
       <h2>TERMINI</h2>
 
-      <table className="admin-table" style={{ marginBottom: "40px" }}>
+      <table className="admin-table">
         <thead>
           <tr>
             <th>Datum</th>
@@ -171,16 +173,14 @@ function AdminRezervacije() {
                 <td>{s.date}</td>
                 <td>{s.time}</td>
                 <td>
-                  <button onClick={() => obrisiSlot(s.id)}>
-                    Obriši
-                  </button>
+                  <button onClick={() => obrisiSlot(s.id)}>Obriši</button>
                 </td>
               </tr>
             ))
           )}
         </tbody>
       </table>
- 
+
       <h2>REZERVACIJE</h2>
 
       {loading ? (
@@ -200,27 +200,21 @@ function AdminRezervacije() {
           </thead>
 
           <tbody>
-            {rezervacije.length === 0 ? (
-              <tr>
-                <td colSpan="7">Nema rezervacija</td>
+            {rezervacije.map((r) => (
+              <tr key={r.id}>
+                <td>{r.ime} {r.prezime}</td>
+                <td>{r.telefon}</td>
+                <td>{r.email}</td>
+                <td>{r.date}</td>
+                <td>{r.time}</td>
+                <td>{r.usluga}</td>
+                <td>
+                  <button onClick={() => obrisiRezervaciju(r.id)}>
+                    Obriši
+                  </button>
+                </td>
               </tr>
-            ) : (
-              rezervacije.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.ime} {r.prezime}</td>
-                  <td>{r.telefon}</td>
-                  <td>{r.email}</td>
-                  <td>{r.date}</td>
-                  <td>{r.time}</td>
-                  <td>{r.usluga}</td>
-                  <td>
-                    <button onClick={() => obrisiRezervaciju(r.id)}>
-                      Obriši
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       )}

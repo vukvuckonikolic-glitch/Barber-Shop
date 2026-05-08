@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { auth } from "../firebase/firebase";
+import { auth, db } from "../firebase/firebase";
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -30,17 +31,39 @@ function Login() {
   };
 
   
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithPopup(auth, provider);
+ const handleGoogleLogin = async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
 
-      console.log("Google login OK");
-      navigate("/");
-    } catch (error) {
-      console.log("GOOGLE ERROR:", error.code, error.message);
-      alert("Google login greška");
+    const configRef = doc(db, "system", "config");
+    const configSnap = await getDoc(configRef);
+
+    let isFirstAdmin = false;
+
+    if (!configSnap.exists()) {
+      await setDoc(configRef, { isAdminCreated: true });
+      isFirstAdmin = true;
+    } else {
+      const data = configSnap.data();
+
+      if (!data.isAdminCreated) {
+        isFirstAdmin = true;
+        await setDoc(configRef, { isAdminCreated: true }, { merge: true });
+      }
     }
-  };
+
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      role: isFirstAdmin ? "admin" : "user",
+      createdAt: new Date(),
+    });
+
+    navigate("/");
+  } catch (error) {
+    console.log(error.code, error.message);
+  }
+};
 
   return (
     <div className="auth-bg">
@@ -49,7 +72,7 @@ function Login() {
 
           <h2>LOGIN</h2>
 
-          {/* EMAIL LOGIN */}
+        
           <form onSubmit={login}>
             <input
               type="email"
@@ -77,7 +100,7 @@ function Login() {
             </p>
           </form>
 
-          {/* GOOGLE LOGIN */}
+         
           <button
             type="button"
             className="google-login-btn"

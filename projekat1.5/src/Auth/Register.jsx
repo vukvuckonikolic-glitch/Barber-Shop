@@ -1,7 +1,14 @@
  import { useState } from "react";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from "../firebase/firebase";
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+
+import { auth, db } from "../firebase/firebase";
 import { useNavigate, Link } from "react-router-dom";
+
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 function Register() {
   const [email, setEmail] = useState("");
@@ -9,17 +16,41 @@ function Register() {
 
   const navigate = useNavigate();
   const provider = new GoogleAuthProvider();
+ const register = async (e) => {
+  e.preventDefault();
 
-  const register = async (e) => {
-    e.preventDefault();
+  try {
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCred.user;
 
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      navigate("/login");
-    } catch (err) {
-      alert(err.message);
+    const configRef = doc(db, "system", "config");
+    const configSnap = await getDoc(configRef);
+
+    let isFirstAdmin = false;
+
+    if (!configSnap.exists()) {
+      await setDoc(configRef, { isAdminCreated: true });
+      isFirstAdmin = true;
+    } else {
+      const data = configSnap.data();
+
+      if (!data.isAdminCreated) {
+        isFirstAdmin = true;
+        await setDoc(configRef, { isAdminCreated: true }, { merge: true });
+      }
     }
-  };
+
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      role: isFirstAdmin ? "admin" : "user",
+      createdAt: new Date(),
+    });
+
+    navigate("/login");
+  } catch (err) {
+    alert(err.message);
+  }
+};
 
   const handleGoogleLogin = async () => {
     try {

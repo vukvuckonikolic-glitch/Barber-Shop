@@ -1,6 +1,6 @@
  import { FaPhone, FaHome } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
@@ -9,6 +9,7 @@ function Header() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [loadingRole, setLoadingRole] = useState(true);
 
   const navigate = useNavigate();
 
@@ -16,37 +17,37 @@ function Header() {
     setOpen((prev) => !prev);
   }
 
+  
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      console.log("USER:", user);
       setUser(user);
 
       if (user) {
-        const snap = await getDoc(doc(db, "users", user.uid));
+        try {
+          const snap = await getDoc(doc(db, "users", user.uid));
 
-        if (snap.exists()) {
-          setRole(snap.data().role);
+          if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole(null);
+          }
+        } catch (err) {
+          console.log(err);
+          setRole(null);
         }
       } else {
         setRole(null);
       }
+
+      setLoadingRole(false);
     });
 
     return () => unsub();
   }, []);
 
   const handleLogout = async () => {
-    try {
-      console.log("LOGOUT START");
-
-      await signOut(auth);
-
-      console.log("LOGOUT DONE:", auth.currentUser);
-
-      navigate("/register");
-    } catch (err) {
-      console.log("ERROR:", err.message);
-    }
+    await signOut(auth);
+    navigate("/register");
   };
 
   return (
@@ -124,8 +125,7 @@ function Header() {
           <li>
             <Link to="/cenovnik">Cenovnik</Link>
           </li>
-
-          
+ 
           {role === "admin" && (
             <li>
               <Link to="/admin">Admin Panel</Link>
@@ -137,8 +137,8 @@ function Header() {
               Rezervacija
             </Link>
           </li>
-
-          {!user && (
+ 
+          {!loadingRole && !user && (
             <div className="reglogin">
               <li className="rezervacija regi">
                 <Link to="/register">Register</Link>
