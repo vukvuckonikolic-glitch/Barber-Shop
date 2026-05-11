@@ -163,16 +163,12 @@ nav ul li a:hover::after {
   text-transform: uppercase;
 
   border: 2px solid #d6b36a;
-  border-radius: 0;
 
   background: linear-gradient(135deg, #d6b36a, #f2d59a);
   color: #111;
-
   cursor: pointer;
-
- 
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+  transition: all 1s ease;
 
   position: relative;
   overflow: hidden;
@@ -831,6 +827,7 @@ width: 100%;
   letter-spacing: 5px;
   text-transform: uppercase;
   text-align: center;
+  margin-top: 40px;
 }
 
  

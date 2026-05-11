@@ -9,7 +9,7 @@ function Home(){
 
   <h1>BRICKO</h1>
 
-  <p>1.Kragujevac Ilindenska 40-Kragujevac</p>
+  <p>1.Kraljevackog Bataljona 40-Kragujevac</p>
 
   <p>2.Petra Karadjordjevica 15-Kragujevac</p>
  

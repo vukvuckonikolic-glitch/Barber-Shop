@@ -138,7 +138,7 @@ function Rezervacija() {
           <div className="dropdown-termini">
             <p>Izaberi termin</p>
 
-            <select value={time} onChange={(e) => setTime(e.target.value)}>
+            <select  value={time} onChange={(e) => setTime(e.target.value)}>
               <option value="">-- slobodni termini --</option>
 
               {filteredSlots
